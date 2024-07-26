@@ -8,10 +8,10 @@ async def main():
         firefox = playwright.firefox
         browser = await firefox.launch(headless = False)
 
-        loginPage = asyncio.create_task(login(browser, "neia@duck.com"))
-        await loginPage
+        # loginPage = asyncio.create_task(login(browser, "neia@duck.com"))
+        # await loginPage
 
-        invc = asyncio.create_task(getInvoice(browser))
+        invc = asyncio.create_task(getInvoice(browser, "..."))
         await invc
 
         await browser.close()
@@ -37,11 +37,33 @@ async def login(browser, email):
     await page.close()
 
 
-async def getInvoice(browser):
+async def getInvoice(browser, order_id):
+    # Uses loggedIn state
     context = await browser.new_context(storage_state='account.json')
     page = await context.new_page()
-    await page.goto("https://amazon.com/")
-    await page.wait_for_timeout(10000)
+    
+    # Go to your orders page
+    await page.goto("https://www.amazon.com/gp/your-account/order-history")
+    await page.get_by_placeholder("Search all orders").fill(order_id)
+    await page.get_by_role("button", name="Search Orders").click()
+    await page.get_by_role("link", name="View invoice").click()
+
+    # Waits for page to laod.
+    await page.wait_for_load_state("networkidle")
+
+    # Get the names of the items
+    items = (await page.locator("i").all_inner_texts())
+
+    # Download the invoice
+    # only in headless chromium
+    # await page.pdf(path=f"invoices/{order_id}.pdf")
+
+    bold_texts = await page.locator("b").all_inner_texts()
+    order_total = bold_texts[-12][13:]
+    grand_total = bold_texts[-2]
+    
+    await page.close()
+    return order_total, grand_total, items
 
 
 asyncio.run(main())
