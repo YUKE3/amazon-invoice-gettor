@@ -4,30 +4,29 @@ import os
 
 
 class scrapper:
-    async def __aenter__(self):
-        self.playwright = await async_playwright().start()
-        firefox = self.playwright.firefox
-        self.browser = await firefox.launch(headless=False)
-        self.context = []
-
-        os.makedirs(r"./accounts", exist_ok=True)
-
-        await self.setupContext()
+    def __call__(self, browser="chromium", debug=False):
+        self.browser_type = browser
+        self.debug = debug
         return self
 
 
-    async def setupContext(self):
-        directory = os.fsencode(r"./accounts")
-        print(directory)
-        for file in os.listdir(directory):
-            filename = os.fsdecode(file)
-            context = await self.browser.new_context(storage_state=f"./accounts/{filename}")
-            self.context.append(context)
+    async def __aenter__(self):
+        self.playwright = await async_playwright().start()
+        if self.browser_type == "firefox":
+            self.browser = self.playwright.firefox
+        else:
+            self.browser = self.playwright.chromium
+
+        os.makedirs(r"./accounts", exist_ok=True)
+        os.makedirs(r"./invoices", exist_ok=True)
+
+        return self
 
 
     async def login(self, email):
-        # Separate context for new login.
-        context = await self.browser.new_context()
+        # Separate browser for new login.
+        browser = await self.browser.launch(headless=False)
+        context = await browser.new_context()
         page = await context.new_page()
         
         # Navigates to password screen.
@@ -43,13 +42,17 @@ class scrapper:
         # Saves storage state
         await context.storage_state(path=f"./accounts/{email}.json")
         await page.close()
+        await browser.close()
 
 
     async def getInvoice(self, order_id):
+        browser = await self.browser.launch(headless=not self.debug)
+        await self.setupContext(browser)
+
         # Uses loggedIn state
-        context = await self.browser.new_context(storage_state='account.json')
+        context = self.context[0] # TODO: loop through all context
         page = await context.new_page()
-        
+
         # Go to your orders page
         await page.goto("https://www.amazon.com/gp/your-account/order-history")
         await page.get_by_placeholder("Search all orders").fill(order_id)
@@ -64,16 +67,28 @@ class scrapper:
 
         # Download the invoice
         # only in headless chromium
-        # await page.pdf(path=f"invoices/{order_id}.pdf")
+        if self.browser_type == "chromium":
+            if self.debug: print("[NOTE] Can't download PDF when in debug mode.")
+            else: await page.pdf(path=f"invoices/{order_id}.pdf")
 
         bold_texts = await page.locator("b").all_inner_texts()
         order_total = bold_texts[-12][13:]
         grand_total = bold_texts[-2]
         
         await page.close()
+        await browser.close()
         return order_total, grand_total, items
 
 
+    async def setupContext(self, browser):
+        self.context = []
+
+        directory = os.fsencode(r"./accounts")
+        for file in os.listdir(directory):
+            filename = os.fsdecode(file)
+            context = await browser.new_context(storage_state=f"./accounts/{filename}")
+            self.context.append(context)
+
+
     async def __aexit__(self, *args):
-        await self.browser.close()
         await self.playwright.stop()
