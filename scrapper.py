@@ -1,5 +1,6 @@
 from playwright.async_api import async_playwright, Playwright
 import re
+import os
 
 
 class scrapper:
@@ -7,7 +8,21 @@ class scrapper:
         self.playwright = await async_playwright().start()
         firefox = self.playwright.firefox
         self.browser = await firefox.launch(headless=False)
+        self.context = []
+
+        os.makedirs(r"./accounts", exist_ok=True)
+
+        await self.setupContext()
         return self
+
+
+    async def setupContext(self):
+        directory = os.fsencode(r"./accounts")
+        print(directory)
+        for file in os.listdir(directory):
+            filename = os.fsdecode(file)
+            context = await self.browser.new_context(storage_state=f"./accounts/{filename}")
+            self.context.append(context)
 
 
     async def login(self, email):
@@ -26,7 +41,7 @@ class scrapper:
         await page.wait_for_url(re.compile(r"^(^(https:\/\/www.amazon.com\/\?ref_=nav_ya_signin).*).*"), timeout=300000)
         
         # Saves storage state
-        await context.storage_state(path="account.json")
+        await context.storage_state(path=f"./accounts/{email}.json")
         await page.close()
 
 
