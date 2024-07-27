@@ -60,7 +60,7 @@ class AmazonScrapper:
         await page.get_by_role("link", name="View invoice").click()
 
         # Waits for page to laod.
-        await page.wait_for_load_state("networkidle")
+        await page.wait_for_load_state("domcontentloaded")
 
         # Get the names of the items
         items = (await page.locator("i").all_inner_texts())
