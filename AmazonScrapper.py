@@ -54,10 +54,12 @@ class AmazonScrapper:
         page = await context.new_page()
 
         # Go to your orders page
-        await page.goto("https://www.amazon.com/gp/your-account/order-history")
-        await page.get_by_placeholder("Search all orders").fill(order_id)
-        await page.get_by_role("button", name="Search Orders").click()
-        await page.get_by_role("link", name="View invoice").click()
+        await page.goto(f"https://www.amazon.com/gp/css/summary/print.html?orderID={order_id}")
+        
+        # await page.goto("https://www.amazon.com/gp/your-account/order-history")
+        # await page.get_by_placeholder("Search all orders").fill(order_id)
+        # await page.get_by_role("button", name="Search Orders").click()
+        # await page.get_by_role("link", name="View invoice").click()
 
         # Waits for page to laod.
         await page.wait_for_load_state("domcontentloaded")
