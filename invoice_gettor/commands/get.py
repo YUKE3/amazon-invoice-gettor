@@ -20,6 +20,11 @@ async def get(gpt, actual, no_pdf, debug, order_id):
 
 
         order_total, grand_total, items = await sc.getInvoice(order_id)
+        if not order_total:
+            print(f"Order not found in valid accounts.")
+            return 
+
+            
         print(f"Order ID: {order_id}")
         print("--------------------------------")
         print("Items in invoice:")

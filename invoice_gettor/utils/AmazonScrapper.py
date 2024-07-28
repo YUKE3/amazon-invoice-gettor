@@ -49,35 +49,48 @@ class AmazonScrapper:
         browser = await self.browser.launch(headless=not self.debug)
         await self.setupContext(browser)
 
-        # Uses loggedIn state
-        context = self.context[0] # TODO: loop through all context
-        page = await context.new_page()
+        # Only one account should have the valid order id
+        # so it will only be set once in the loop
+        bold_texts, order_total, grand_total = None, None, None
+        for context_name, context in self.context:
+            if order_total:
+                # Already found
+                break
+            
+            try:
+                # Create page from logged in context
+                page = await context.new_page()
 
-        # Go to your orders page
-        await page.goto(f"https://www.amazon.com/gp/css/summary/print.html?orderID={order_id}")
+                # Go to your orders page
+                await page.goto(f"https://www.amazon.com/gp/css/summary/print.html?orderID={order_id}")
+                
+                # Waits for page to laod.
+                await page.wait_for_load_state("domcontentloaded")
+
+                # Get the names of the items
+                items = (await page.locator("i").all_inner_texts())
+
+                if items[0] == '':
+                    # Order not found:
+                    print(f"[INFO] Order not found in {context_name}")
+                    continue
+
+                # Download the invoice
+                # only in headless chromium
+                if self.browser_type == "chromium":
+                    if self.debug: print("[NOTE] Can't download PDF when in debug mode.")
+                    else: await page.pdf(path=f"invoices/{order_id}.pdf")
+
+                bold_texts = await page.locator("b").all_inner_texts()
+                order_total = bold_texts[-12][13:]
+                grand_total = bold_texts[-2]
+
+                await page.close()
+
+            except Exception as e:
+                print(f"[ERROR] {context_name}")
         
-        # await page.goto("https://www.amazon.com/gp/your-account/order-history")
-        # await page.get_by_placeholder("Search all orders").fill(order_id)
-        # await page.get_by_role("button", name="Search Orders").click()
-        # await page.get_by_role("link", name="View invoice").click()
-
-        # Waits for page to laod.
-        await page.wait_for_load_state("domcontentloaded")
-
-        # Get the names of the items
-        items = (await page.locator("i").all_inner_texts())
-
-        # Download the invoice
-        # only in headless chromium
-        if self.browser_type == "chromium":
-            if self.debug: print("[NOTE] Can't download PDF when in debug mode.")
-            else: await page.pdf(path=f"invoices/{order_id}.pdf")
-
-        bold_texts = await page.locator("b").all_inner_texts()
-        order_total = bold_texts[-12][13:]
-        grand_total = bold_texts[-2]
         
-        await page.close()
         await browser.close()
         return order_total, grand_total, items
 
@@ -88,8 +101,11 @@ class AmazonScrapper:
         directory = os.fsencode(r"./accounts")
         for file in os.listdir(directory):
             filename = os.fsdecode(file)
-            context = await browser.new_context(storage_state=f"./accounts/{filename}")
-            self.context.append(context)
+            try:
+                context = await browser.new_context(storage_state=f"./accounts/{filename}")
+                self.context.append((filename, context))
+            except Exception as e:
+                print(f"[ERROR] {filename} failed to load as context.")
 
 
     async def __aexit__(self, *args):
