@@ -20,11 +20,13 @@ async def get(gpt, actual, no_pdf, debug, order_id):
 
 
         order_total, grand_total, items = await sc.getInvoice(order_id)
+        print(f"Order ID: {order_id}")
+        print("--------------------------------")
         print("Items in invoice:")
         for i, names in enumerate(items):
-            print(f"{i}. {names}")
+            print(f"{i+1}. {names}")
         print("--------------------------------")
-        print(f"Order total: {order_id}  Grand total: {grand_total}")
+        print(f"Order total: {order_total}  Grand total: {grand_total}")
 
         if gpt:
             gptw = GPTWrapper()
@@ -32,7 +34,7 @@ async def get(gpt, actual, no_pdf, debug, order_id):
         
             print("Summarized items:")
             for i, names in enumerate(shortened_names):
-                print(f"{i}. {names}")
+                print(f"{i+1}. {names}")
             print("--------------------------------")
 
         if actual:
