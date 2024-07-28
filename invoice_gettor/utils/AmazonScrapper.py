@@ -1,6 +1,7 @@
 from playwright.async_api import async_playwright, Playwright
 import re
 import os
+import signal
 
 
 class AmazonScrapper:
@@ -98,15 +99,23 @@ class AmazonScrapper:
     async def setupContext(self, browser):
         self.context = []
 
+        def alarm_handler(num, stack):
+            print(f"[ERROR] Playwright failed to setup context, please quit and try again.")
+            raise Exception()
+
         directory = os.fsencode(r"./accounts")
+        signal.signal(signal.SIGALRM, alarm_handler)
         for file in os.listdir(directory):
             filename = os.fsdecode(file)
+            signal.alarm(5)
             try:
                 context = await browser.new_context(storage_state=f"./accounts/{filename}")
                 self.context.append((filename, context))
             except Exception as e:
                 print(f"[ERROR] {filename} failed to load as context.")
-
+            finally:
+                signal.alarm(0)
+    
 
     async def __aexit__(self, *args):
         await self.playwright.stop()
