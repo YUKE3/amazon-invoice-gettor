@@ -52,7 +52,7 @@ class AmazonScrapper:
 
         # Only one account should have the valid order id
         # so it will only be set once in the loop
-        bold_texts, order_total, grand_total = None, None, None
+        bold_texts, order_total, grand_total, items = None, None, None, None
         for context_name, context in self.context:
             if order_total:
                 # Already found
@@ -72,8 +72,12 @@ class AmazonScrapper:
                 items = (await page.locator("i").all_inner_texts())
 
                 if items[0] == '':
-                    # Order not found:
-                    print(f"[INFO] Order not found in {context_name}")
+                    # Not signed in
+                    if "signin?" in page.url:
+                        print(f"[ERROR] Account {context_name} has expired, please relogin")
+                    else:
+                        # Order not found:
+                        print(f"[INFO] Order not found in {context_name}")
                     continue
 
                 # Download the invoice
