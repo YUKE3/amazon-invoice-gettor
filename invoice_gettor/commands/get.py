@@ -27,14 +27,24 @@ async def get(gpt, actual, no_pdf, debug, order_id):
             print(f"{i+1}. {names}")
         print("--------------------------------")
         print(f"Order total: {order_total}  Grand total: {grand_total}")
+        print("--------------------------------")
 
         if gpt:
-            gptw = GPTWrapper()
-            shortened_names = gptw.summarizeOrder(items)
-        
-            print("Summarized items:")
-            for i, names in enumerate(shortened_names):
-                print(f"{i+1}. {names}")
+            try:
+                gptw = GPTWrapper()
+                shortened_names = gptw.summarizeOrder(items)
+
+                print("Summarized items:")
+                for i, names in enumerate(shortened_names):
+                    print(f"{i+1}. {names}")
+            except Exception as e:
+                if hasattr(e, 'message'):
+                    message = e.message
+                else:
+                    message = e
+                print(f"[ERROR] GPT integration failed with error:\n{message}")
+                gpt = False
+            
             print("--------------------------------")
 
         if actual:
@@ -47,7 +57,12 @@ async def get(gpt, actual, no_pdf, debug, order_id):
             print(notes)
             confirmation = input("Add this transaction? (yes/no):")
             if confirmation.lower() == 'yes' or confirmation.lower() == 'y':
-                with ActualWrapper() as aw:
-                    aw.addOrder(notes=notes, payment=decimal.Decimal("-"+order_total[1:]), date="", category="")
-            else:
-                pass
+                try:
+                    with ActualWrapper() as aw:
+                        aw.addOrder(notes=notes, payment=decimal.Decimal("-"+order_total[1:]), date="", category="")
+                except Exception as e:
+                    if hasattr(e, 'message'):
+                        message = e.message
+                    else:
+                        message = e
+                    print(f"[ERROR] Actual integration failed with error:\n{message}")
