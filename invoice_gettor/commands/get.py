@@ -1,5 +1,7 @@
 import click
 import decimal
+import os
+from dotenv import load_dotenv
 from ..utils.AmazonScrapper import AmazonScrapper
 from ..utils.GPTWrapper import GPTWrapper
 from ..utils.ActualWrapper import ActualWrapper
@@ -13,12 +15,23 @@ from ..decorator.coro import coro
 @click.option('--debug', is_flag=True, default=False, help="Shows browser (disables PDF downloading)")
 @coro
 async def get(gpt, actual, no_pdf, debug, order_id):
+    load_dotenv()
+    if gpt:
+        if "OPENAI_API_KEY" not in os.environ:
+            print(f"Please add \"OPENAI_API_KEY\" to .env to use --gpt")
+            return
+    if actual:
+        env_vars = ["base_url", "password", "encryption_password", "file", "account"]
+        missing = False
+        for var in env_vars:
+            if var not in os.environ:
+                print(f"Please add \"var\" to .env to use --actual")
+                missing = True
+        if missing: return
+    
     asc = AmazonScrapper()
 
     async with asc(debug=debug) as sc:
-        # TODO: Check env associated with flags
-
-
         order_total, grand_total, items = await sc.getInvoice(order_id)
         if not order_total:
             print(f"Order not found in valid accounts.")
