@@ -9,6 +9,8 @@ async def login(email):
     asc = AmazonScrapper()
 
     async with asc(debug=False) as sc:
-        await sc.login(email)
-
-        print("Logged in successfully.")
+        try:
+            await sc.login(email)
+            print("Logged in successfully.")
+        except Exception:
+            print("Please try again.")
