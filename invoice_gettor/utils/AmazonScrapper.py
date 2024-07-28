@@ -121,5 +121,25 @@ class AmazonScrapper:
                 signal.alarm(0)
     
 
+    async def logout(self, email):
+        if not os.path.isfile(f"./accounts/{email}.json"):
+            print(f"[ERROR] Account {email} not logged in.")
+            return
+
+        browser = await self.browser.launch(headless=not self.debug)
+
+        def alarm_handler(num, stack):
+            print("f[ERROR] Playwright failed to setup context, please quit and try again.")
+            raise Exception()
+
+        try:
+            context = await browser.new_context(storage_state=f"./accounts/{email}.json")
+            page = await context.new_page()
+            await page.goto("https://www.amazon.com/gp/flex/sign-out.html?path=%2Fgp%2Fyourstore%2Fhome&useRedirectOnSuccess=1&signIn=1&action=sign-out&ref_=nav_AccountFlyout_signout")
+            os.remove(f"./accounts/{email}.json")
+        except Exception:
+            print(f"[ERROR] logout failed due to:\n{e}")
+
+
     async def __aexit__(self, *args):
         await self.playwright.stop()
