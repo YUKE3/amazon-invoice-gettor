@@ -1,6 +1,7 @@
 import click
 import decimal
 import os
+import datetime
 from dotenv import load_dotenv
 from ..utils.AmazonScrapper import AmazonScrapper
 from ..utils.GPTWrapper import GPTWrapper
@@ -71,13 +72,32 @@ async def get(gpt, actual, no_pdf, debug, order_id):
             else:
                 notes = order_id
 
-            print("New Actual transaction:")
+            print("New Actual transaction details:")
             print(notes)
+
+            while True:
+                date = input("Date of this transaction? [YYYY/MM/DD (year is optional)] (empty for today):")
+                print(date)
+                if date == '':
+                    print(date)
+                    date = datetime.datetime.now()
+                    break
+
+                date = date.split('/')
+                if len(date) < 3: # Add year if not specified
+                    date.insert(0,datetime.datetime.now().date().strftime('%Y'))
+                try:
+                    date = datetime.date(*map(int, date))
+                    break
+                except Exception as e:
+                    print(f"[ERROR] Please enter a valid date.")
+
             confirmation = input("Add this transaction? (yes/no):")
-            if confirmation.lower() == 'yes' or confirmation.lower() == 'y':
+            if confirmation.lower() == 'yes' or confirmation.lower() == 'y' or confirmation == '':
                 try:
                     with ActualWrapper() as aw:
-                        aw.addOrder(notes=notes, payment=decimal.Decimal("-"+order_total[1:]), date="", category="")
+                        aw.addOrder(notes=notes, payment=decimal.Decimal("-"+order_total[1:]), date=date, category="")
+                        print("Transactiona added successfully.")
                 except Exception as e:
                     if hasattr(e, 'message'):
                         message = e.message

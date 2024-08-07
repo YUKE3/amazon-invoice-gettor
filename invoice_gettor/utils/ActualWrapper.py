@@ -31,7 +31,7 @@ class ActualWrapper:
     def addOrder(self, date, notes, category, payment):
         t = create_transaction(
             self.actual.session, 
-            datetime.date.today(),
+            date,
             get_accounts(self.actual.session, os.getenv("account"))[0],
             "Amazon",
             notes=notes,
